@@ -1,0 +1,105 @@
+---
+- name: Test playbook
+  hosts: ours
+
+  tasks:
+  - name: Install NGINX
+    ansible.builtin.apt:
+      name: nginx
+
+  - name: Install postgresql
+    ansible.builtin.apt:
+      update_cache: true
+      pkg:
+        - postgresql
+        - postgis
+
+  - name: Create app user
+    ansible.builtin.user:
+      name: joanico
+      shell: /bin/bash
+
+  - name: Install Python3 psycopg2 to allow postgresql_user
+    ansible.builtin.apt:
+      name: python3-psycopg2
+
+  - name: Add a postgres role for root
+    become: yes
+    become_user: postgres
+    community.postgresql.postgresql_user:
+      name: root
+
+  - name: Add a postgres database for root
+    become: yes
+    become_user: postgres
+    community.postgresql.postgresql_db:
+      name: root
+
+  - name: Add a postgres role for joanico
+    become: yes
+    become_user: postgres
+    community.postgresql.postgresql_user:
+      name: joanico
+
+  - name: Add a postgres database for joanico
+    become: yes
+    become_user: postgres
+    community.postgresql.postgresql_db:
+      name: mapa_eskolardb
+      owner: joanico
+
+  - name: Clone the mapa eskolar source code
+    become: yes
+    become_user: joanico
+    ansible.builtin.git:
+      repo: 'https://github.com/joanico/mapa_eskolar.git'
+      dest: /home/joanico/mapa_eskolar
+      version: master
+
+  - name: Install pip module requirements
+    ansible.builtin.apt:
+      name: python3-virtualenv
+
+  - name: Install project python dependency build requirements
+    ansible.builtin.apt:
+      name: libpq-dev
+
+  - name: Install specified python requirements in indicated (virtualenv)
+    become: yes
+    become_user: joanico
+    ansible.builtin.pip:
+      requirements: /home/joanico/mapa_eskolar/requirements.txt
+      virtualenv: /home/joanico/venv
+
+  - name: Write a local settings file
+    ansible.builtin.template:
+      src: files/local_settings.py.jinja
+      dest: /home/joanico/mapa_eskolar/mapa_eskolar/local.py
+  
+  - name: Install django_select2 in virtualenv
+    become: yes
+    become_user: joanico
+    ansible.builtin.pip:
+      name: django_select2
+      virtualenv: /home/joanico/venv
+
+  - name: Adds postgis extension to the database
+    become: yes
+    become_user: postgres
+    community.postgresql.postgresql_ext:
+      name: postgis
+      db: mapa_eskolardb
+
+  - name: Run migrate on the application
+    become: yes
+    become_user: joanico
+    community.general.django_manage:
+      command: migrate
+      project_path: /home/joanico/mapa_eskolar
+      virtualenv: /home/joanico/venv
+
+  - name: Create static folder
+    ansible.builtin.file:
+      path: /home/joanico/static
+      state: directory
+    tags: niko
