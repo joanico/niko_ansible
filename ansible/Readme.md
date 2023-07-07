@@ -48,7 +48,7 @@ mkdir playbook_test.yaml
 ```
 12. Run install from your Dev enviroment
 ```
-ansible-playbook playbook_test.yaml -f 2
+ansible-playbook playbook_test.yaml -t tag
 ```
 
 
