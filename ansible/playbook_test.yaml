@@ -102,4 +102,17 @@
     ansible.builtin.file:
       path: /home/joanico/static
       state: directory
+
+  - name: Copy file to remote machine
+    copy:
+      src: /Users/niko/mapa_eskolar.sql
+      dest: /home/
+
+  - name: Restore database using the tar format
+    community.postgresql.postgresql_db:
+      name: mapa_eskolardb
+      state: restore
+      target: /home/mapa_eskolar.sql
+    become: true
+    become_user: postgres
     tags: niko
